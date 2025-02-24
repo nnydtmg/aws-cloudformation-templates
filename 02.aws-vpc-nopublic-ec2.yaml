@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+
+Resources:
+  CfVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      Tags:
+        -
+          Key: Name
+          Value: CfVPC
+
+  CfVPC1PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 192.168.0.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 1
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PrivateSubnet1
+
+  CfVPC1RouteTableForPrivateSubnet1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPrivateSubnet1
+
+  CfVPC1AssocciateRouteTableForPrivateSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPrivateSubnet1
+      SubnetId: !Ref CfVPC1PrivateSubnet1
+  
+  CfVPC1PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 192.168.1.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 1
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PrivateSubnet2
+
+  CfVPC1RouteTableForPrivateSubnet2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPrivateSubnet2
+
+  CfVPC1AssocciateRouteTableForPrivateSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPrivateSubnet2
+      SubnetId: !Ref CfVPC1PrivateSubnet2
+
+  # SG
+  EC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Bastion EC2 Security Group"
+      VpcId: !Ref CfVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref EICEndpointSG
+      Tags:
+        - Key: Name
+          Value: bastion-ec2-sg
+
+  EICEndpointSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Bastion Endpoint Security Group"
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: from-ec2-to-eic-endpoint-sg
+
+  # Endpoints
+  EICVPCEndpoint:
+    Type: AWS::EC2::InstanceConnectEndpoint
+    Properties:
+      SubnetId: !Ref CfVPC1PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref EICEndpointSG
+  
+  VPCS3Endpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Properties:
+      RouteTableIds: 
+        - !Ref CfVPC1RouteTableForPrivateSubnet1
+        - !Ref CfVPC1RouteTableForPrivateSubnet2
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcId: !Ref CfVPC
+
+
+  # EC2作成  
+  NewKeyPair:
+    Type: 'AWS::EC2::KeyPair'
+    Properties:
+      KeyName: MyKeyPair
+  
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: bastion-ec2
+      ImageId: !Ref LatestAmiId
+      InstanceType: t3.medium
+      KeyName: !Ref NewKeyPair
+      DisableApiTermination: false
+      EbsOptimized: false
+      SecurityGroupIds:
+        - !Ref EC2SG
+      SubnetId: !Ref CfVPC1PrivateSubnet1
