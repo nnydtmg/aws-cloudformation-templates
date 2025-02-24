@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Resources:
+  CfVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      Tags:
+        -
+          Key: Name
+          Value: CfVPC
+
+  CfVPC1PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 1
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PrivateSubnet1
+
+  CfVPC1RouteTableForPrivateSubnet1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPrivateSubnet1
+
+  CfVPC1AssocciateRouteTableForPrivateSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPrivateSubnet1
+      SubnetId: !Ref CfVPC1PrivateSubnet1
+  
+  CfVPC1PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 1
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PrivateSubnet2
+
+  CfVPC1RouteTableForPrivateSubnet2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPrivateSubnet2
+
+  CfVPC1AssocciateRouteTableForPrivateSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPrivateSubnet2
+      SubnetId: !Ref CfVPC1PrivateSubnet2
