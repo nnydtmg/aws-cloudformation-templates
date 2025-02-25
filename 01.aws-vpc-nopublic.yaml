@@ -20,7 +20,7 @@ Resources:
       VpcId: !Ref CfVPC
       AvailabilityZone: 
         Fn::Select: 
-          - 1
+          - 0
           - Fn::GetAZs: ""
       Tags:
         - Key: Name
