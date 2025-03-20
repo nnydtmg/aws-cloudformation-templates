@@ -120,9 +120,35 @@ Resources:
     Type: 'AWS::EC2::KeyPair'
     Properties:
       KeyName: MyKeyPair
-  
+      Tags:
+        - Key: Name
+          Value: MyKeyPair
+
+  # First create an IAM role
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore  # Example managed policy
+
+  # Create an instance profile
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # Modify your EC2 instance to use the instance profile
   EC2Instance:
-    Type: "AWS::EC2::Instance"
+    Type: AWS::EC2::Instance
     Properties:
       Tags:
         - Key: Name
@@ -132,6 +158,7 @@ Resources:
       KeyName: !Ref NewKeyPair
       DisableApiTermination: false
       EbsOptimized: false
+      IamInstanceProfile: !Ref EC2InstanceProfile
       SecurityGroupIds:
         - !Ref EC2SG
       SubnetId: !Ref CfVPC1PrivateSubnet1
