@@ -1,0 +1,230 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  InstanceType:
+    Description: EC2 InstanceType
+    Type: String
+    Default: t3.nano
+    AllowedValues:
+      - t3.nano
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+  
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+
+Resources:
+  CfVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      Tags:
+        -
+          Key: Name
+          Value: CfVPC
+
+  InternetGW: 
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: InternetGW
+
+  MyVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGW
+      VpcId: !Ref CfVPC
+  
+  # Public AZ1
+  CfVPC1PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 0
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PublicSubnet1
+  
+  CfVPC1RouteTableForPublicSubnet1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPublicSubnet1
+
+  CfVPC1AssocciateRouteTableForPublicSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPublicSubnet1
+      SubnetId: !Ref CfVPC1PublicSubnet1
+  
+  MyPublicRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGW
+      RouteTableId: !Ref CfVPC1RouteTableForPublicSubnet1
+  
+  # Public AZ2
+  CfVPC1PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 1
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PublicSubnet2
+  
+  CfVPC1RouteTableForPublicSubnet2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPublicSubnet2
+
+  CfVPC1AssocciateRouteTableForPublicSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPublicSubnet2
+      SubnetId: !Ref CfVPC1PublicSubnet2
+  
+  MyPublicRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGW
+      RouteTableId: !Ref CfVPC1RouteTableForPublicSubnet2
+
+  # Private AZ1
+  CfVPC1PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 0
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PrivateSubnet1
+
+  CfVPC1RouteTableForPrivateSubnet1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPrivateSubnet1
+
+  CfVPC1AssocciateRouteTableForPrivateSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPrivateSubnet1
+      SubnetId: !Ref CfVPC1PrivateSubnet1
+  
+  # Private AZ2
+  CfVPC1PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref CfVPC
+      AvailabilityZone: 
+        Fn::Select: 
+          - 1
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: CfVPC1PrivateSubnet2
+
+  CfVPC1RouteTableForPrivateSubnet2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: CfVPC1RouteTableForPrivateSubnet2
+
+  CfVPC1AssocciateRouteTableForPrivateSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref CfVPC1RouteTableForPrivateSubnet2
+      SubnetId: !Ref CfVPC1PrivateSubnet2
+
+  # SG
+  EC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Bastion EC2 Security Group"
+      VpcId: !Ref CfVPC
+      Tags:
+        - Key: Name
+          Value: bastion-ec2-sg
+
+  # EC2
+  NewKeyPair:
+    Type: 'AWS::EC2::KeyPair'
+    Properties:
+      KeyName: MyKeyPair
+      Tags:
+        - Key: Name
+          Value: MyKeyPair
+
+  # First create an IAM role
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore  # Example managed policy
+
+  # Create an instance profile
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # Modify your EC2 instance to use the instance profile
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      Tags:
+        - Key: Name
+          Value: bastion-ec2
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref NewKeyPair
+      DisableApiTermination: false
+      EbsOptimized: false
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref EC2SG
+      SubnetId: !Ref CfVPC1PublicSubnet1
