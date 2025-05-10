@@ -23,7 +23,7 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref InternetGW
-      VpcId: !Ref MyVPC
+      VpcId: !Ref CfVPC
   
   # Public AZ1
   CfVPC1PublicSubnet1:
