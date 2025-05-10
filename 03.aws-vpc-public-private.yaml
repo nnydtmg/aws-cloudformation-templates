@@ -17,7 +17,7 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: !Ref InternetGwName
+          Value: InternetGW
 
   MyVPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
