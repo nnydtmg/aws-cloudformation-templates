@@ -150,6 +150,9 @@ Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
       Tags:
         - Key: Name
           Value: bastion-ec2

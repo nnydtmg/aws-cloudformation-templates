@@ -829,6 +829,9 @@ Resources:
   VSCodeInstanceEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
       KeyName: !Ref EC2KeyPair
       BlockDeviceMappings:
         - Ebs:
